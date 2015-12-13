@@ -1,8 +1,6 @@
-# Ruby skeleton project
+# Ruby redis examples
 
-Simple skeleton to start writing trivial ruby apps fast
-
-rename `skeleton_rename_me` to whatever you require
+Various examples what you can do with redis
 
 ## Install and test
 
