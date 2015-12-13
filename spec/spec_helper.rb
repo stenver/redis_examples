@@ -6,8 +6,6 @@ require 'redis'
 require 'ostruct'
 require 'json'
 
-require 'redis_examples'
-
 # Require support classes
 Dir[File.dirname(__FILE__) + '/support/*.rb'].each {|f| require f}
 
