@@ -3,7 +3,7 @@ require 'bundler'
 require 'pry'
 Bundler.setup
 
-require 'skeleton_rename_me'
+require 'redis_examples'
 
 RSpec.configure do |config|
   config.mock_with :rspec
