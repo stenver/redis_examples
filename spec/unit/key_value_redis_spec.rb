@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe RedisExamples::KeyValueRedis do
+describe RedisExamples::RedisAdapter do
   subject { described_class.new(database_number) }
 
   let(:database_number) { 10 }
@@ -11,7 +11,7 @@ describe RedisExamples::KeyValueRedis do
     let(:value) { "some_value" }
 
     after(:each) do
-      subject.delete(key)
+      subject.del(key)
     end
 
     context 'simple keys and values' do
@@ -131,7 +131,7 @@ describe RedisExamples::KeyValueRedis do
 
     context 'when deleting single key' do
       it 'deletes single pair' do
-        subject.delete(key1)
+        subject.del(key1)
         expect(subject.get(key1)).to eq nil
         expect(subject.get(key2)).to eq "value"
         expect(subject.get(key3)).to eq "value"
@@ -140,7 +140,7 @@ describe RedisExamples::KeyValueRedis do
 
     context 'when deleting multiple keys' do
       it 'deletes all pairs' do
-        subject.delete([key1, key2, key3])
+        subject.del([key1, key2, key3])
         expect(subject.get(key1)).to eq nil
         expect(subject.get(key2)).to eq nil
         expect(subject.get(key3)).to eq nil

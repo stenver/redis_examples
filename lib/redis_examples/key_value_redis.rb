@@ -1,5 +1,5 @@
 class RedisExamples
-  class KeyValueRedis
+  class RedisAdapter
     def initialize(database_number)
       @redis = Redis.new(db: database_number)
     end
@@ -12,7 +12,7 @@ class RedisExamples
       @redis.get(key)
     end
 
-    def delete(key)
+    def del(key)
       @redis.del(key)
     end
   end

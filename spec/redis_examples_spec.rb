@@ -6,8 +6,8 @@ describe RedisExamples do
 
   describe '#key_value_redis' do
 
-    it 'returns KeyValueRedis' do
-      expect(subject.key_value_redis(database_number)).to be_a RedisExamples::KeyValueRedis
+    it 'returns RedisAdapter' do
+      expect(subject.key_value_redis(database_number)).to be_a RedisExamples::RedisAdapter
     end
   end
 end
