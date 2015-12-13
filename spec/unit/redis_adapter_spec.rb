@@ -4,7 +4,7 @@ describe RedisExamples::RedisAdapter do
   subject { described_class.new(database_number) }
 
   let(:database_number) { 10 }
-  let(:value) { 1 }
+  let(:value) { 2 }
 
   describe '#set, #get' do
     let(:key) { "some_key" }
@@ -215,26 +215,31 @@ describe RedisExamples::RedisAdapter do
     end
 
     context 'when in transaction and using 2 threads' do
-      it 'it blocks the other thread until transaction is over' do
-        future1 = nil
-        future2 = nil
+      let(:transactional_redis) { described_class.new(database_number) }
+
+      it 'executes transactional commands after non-transactional commands' do
+        transactional_value1 = nil
+        transactional_value2 = nil
+        non_transactional_value = nil
+        transactional_redis.set(key1, value)
         Thread.new {
-          subject.multi do
-            subject.set(key1, value)
+          transactional_redis.multi do
+            transactional_redis.incr(key1)
+            transactional_value1 = transactional_redis.get(key1)
             sleep 0.2
-            subject.incr(key1)
-            future1 = subject.get(key1)
+            transactional_value2 = transactional_redis.get(key1)
           end
         }
         Thread.new {
           sleep 0.1
           subject.incr(key1)
-          future2 = subject.get(key1)
+          non_transactional_value = subject.get(key1)
         }
         sleep 0.4
 
-        expect(future1.value.to_i).to eq(value + 1)
-        expect(future2.to_i).to eq(value + 2)
+        expect(transactional_value1.value.to_i).to eq(value + 2)
+        expect(transactional_value2.value.to_i).to eq(value + 2)
+        expect(non_transactional_value.to_i).to eq(value + 1)
         expect(subject.get(key1).to_i).to eq(value + 2)
       end
     end
