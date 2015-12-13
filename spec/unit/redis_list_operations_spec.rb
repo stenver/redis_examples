@@ -5,7 +5,7 @@ describe 'redis lists' do
   let(:redis) { Redis.new }
   let(:key) { 'my_list' }
 
-  after { redis.del(key) }
+  after(:each) { redis.del(key) }
 
   describe '#lpush' do
     let(:values) { ["1", "2", "3"] }
@@ -80,7 +80,7 @@ describe 'redis lists' do
     let(:blocked_redis) { Redis.new }
     before { redis.lpush(key, values) }
 
-    it 'returns correct elements depending on input' do
+    it 'returns elements when new element inserted' do
       Thread.new {
         expect(blocked_redis.blpop(key, 0)).to eq([key, "1"])
         expect(blocked_redis.blpop(key, 0)).to eq([key, "2"])
@@ -91,6 +91,30 @@ describe 'redis lists' do
       }
       sleep 0.3
       expect(redis.lpop(key)).to eq nil
+    end
+
+    context 'with multiple lists' do
+      let(:key2) { "my_list2" }
+
+      it 'returns correct elements depending on input' do
+        Thread.new {
+          expect(blocked_redis.blpop(key, key2, 0)).to eq([key, "1"])
+          expect(blocked_redis.blpop(key, key2, 0)).to eq([key2, "2"])
+        }
+        Thread.new {
+          sleep 0.2
+          redis.lpush(key2, "2")
+        }
+        sleep 0.3
+        expect(redis.lpop(key)).to eq nil
+        expect(redis.lpop(key2)).to eq nil
+      end
+    end
+
+    context 'when timeout given' do
+      it 'times out when list empty' do
+        expect(blocked_redis.blpop(:empty_list, 1)).to eq(nil)
+      end
     end
   end
 end
