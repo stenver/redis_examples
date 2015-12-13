@@ -15,5 +15,9 @@ class RedisExamples
     def del(key)
       @redis.del(key)
     end
+
+    def incr(key)
+      @redis.incr(key)
+    end
   end
 end
