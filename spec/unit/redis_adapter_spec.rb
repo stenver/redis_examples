@@ -1,7 +1,7 @@
 require 'spec_helper'
 
-describe RedisExamples::RedisAdapter do
-  subject { described_class.new(database_number) }
+describe 'redis basic key/value operations' do
+  let(:redis) { Redis.new(db: database_number) }
 
   let(:database_number) { 10 }
   let(:value) { 2 }
@@ -11,21 +11,21 @@ describe RedisExamples::RedisAdapter do
     let(:value) { "some_value" }
 
     after(:each) do
-      subject.del(key)
+      redis.del(key)
     end
 
     context 'simple keys and values' do
-      before { subject.set(key, value) }
+      before { redis.set(key, value) }
 
       it 'returns value' do
-        expect(subject.get(key)).to eq value
+        expect(redis.get(key)).to eq value
       end
 
       context 'when key has spaces' do
         let(:key) { "some key" }
 
         it 'returns value' do
-          expect(subject.get(key)).to eq value
+          expect(redis.get(key)).to eq value
         end
       end
 
@@ -33,15 +33,15 @@ describe RedisExamples::RedisAdapter do
         let(:key) { "  " }
 
         it 'returns value' do
-          expect(subject.get(key)).to eq value
+          expect(redis.get(key)).to eq value
         end
       end
 
       context 'when requesting multiple times' do
         it 'returns value' do
-          expect(subject.get(key)).to eq value
-          expect(subject.get(key)).to eq value
-          expect(subject.get(key)).to eq value
+          expect(redis.get(key)).to eq value
+          expect(redis.get(key)).to eq value
+          expect(redis.get(key)).to eq value
         end
       end
 
@@ -49,11 +49,11 @@ describe RedisExamples::RedisAdapter do
         let(:value) { { my: :hash }.to_json }
 
         it 'returns value in string' do
-          expect(subject.get(key)).to eq value
+          expect(redis.get(key)).to eq value
         end
 
         it 'lets you JSON parse value back to hash' do
-          expect(JSON.parse(subject.get(key))).to eq({ 'my' => 'hash' })
+          expect(JSON.parse(redis.get(key))).to eq({ 'my' => 'hash' })
         end
       end
 
@@ -61,7 +61,7 @@ describe RedisExamples::RedisAdapter do
         let(:value) { MockObject.new(3) }
 
         it 'stores object memory address' do
-          expect(subject.get(key)).to eq value.to_s
+          expect(redis.get(key)).to eq value.to_s
         end
       end
 
@@ -69,40 +69,40 @@ describe RedisExamples::RedisAdapter do
         let(:value) { [1, 2, 3].to_json }
 
         it 'returns value in string' do
-          expect(subject.get(key)).to eq value.to_s
+          expect(redis.get(key)).to eq value.to_s
         end
 
         it 'lets you json parse value back to array' do
-          expect(JSON.parse(subject.get(key))).to eq [1, 2, 3]
+          expect(JSON.parse(redis.get(key))).to eq [1, 2, 3]
         end
       end
     end
 
     context 'when multiple databases' do
-      let(:redis2) { described_class.new(database_number + 1) }
+      let(:redis2) { Redis.new(db: database_number + 1) }
 
       context 'when simple key/value' do
         let(:key) { "some_key" }
         let(:value) { "some_value" }
-        before { subject.set(key, value) }
+        before(:each) { redis.set(key, value) }
 
         it 'does not store it to other database' do
-          expect(subject.get(key)).to eq value
+          expect(redis.get(key)).to eq value
           expect(redis2.get(key)).to eq nil
         end
       end
     end
 
     context 'when setting options' do
-      before { subject.set(key, value, options) }
+      before { redis.set(key, value, options) }
 
       context 'when setting expire time in seconds' do
-        let(:options) { { ex: 0.1 }}
+        let(:options) { { ex: 1 }}
 
         it 'expires the value in 0.1 seconds' do
-          expect(subject.get(key)).to eq value
-          sleep 0.1
-          expect(subject.get(key)).to eq value
+          expect(redis.get(key)).to eq value
+          sleep 1.1
+          expect(redis.get(key)).to eq nil
         end
       end
 
@@ -110,9 +110,9 @@ describe RedisExamples::RedisAdapter do
         let(:options) { { px: 100 }}
 
         it 'expires the value in 100 milliseconds' do
-          expect(subject.get(key)).to eq value
-          sleep 0.1
-          expect(subject.get(key)).to eq value
+          expect(redis.get(key)).to eq value
+          sleep 0.2
+          expect(redis.get(key)).to eq nil
         end
       end
     end
@@ -124,28 +124,28 @@ describe RedisExamples::RedisAdapter do
     let(:key3) { 3 }
 
     before do
-      subject.set(key1, "value")
-      subject.set(key2, "value")
-      subject.set(key3, "value")
+      redis.set(key1, "value")
+      redis.set(key2, "value")
+      redis.set(key3, "value")
     end
 
-    after { subject.del([key1, key2, key3]) }
+    after { redis.del([key1, key2, key3]) }
 
     context 'when deleting single key' do
       it 'deletes single pair' do
-        subject.del(key1)
-        expect(subject.get(key1)).to eq nil
-        expect(subject.get(key2)).to eq "value"
-        expect(subject.get(key3)).to eq "value"
+        redis.del(key1)
+        expect(redis.get(key1)).to eq nil
+        expect(redis.get(key2)).to eq "value"
+        expect(redis.get(key3)).to eq "value"
       end
     end
 
     context 'when deleting multiple keys' do
       it 'deletes all pairs' do
-        subject.del([key1, key2, key3])
-        expect(subject.get(key1)).to eq nil
-        expect(subject.get(key2)).to eq nil
-        expect(subject.get(key3)).to eq nil
+        redis.del([key1, key2, key3])
+        expect(redis.get(key1)).to eq nil
+        expect(redis.get(key2)).to eq nil
+        expect(redis.get(key3)).to eq nil
       end
     end
   end
@@ -153,15 +153,15 @@ describe RedisExamples::RedisAdapter do
   describe '#incr' do
     let(:key) { "some_key" }
 
-    before { subject.set(key, value) }
-    after { subject.del(key) }
+    before { redis.set(key, value) }
+    after { redis.del(key) }
 
     context 'when incrementing number' do
       let(:value) { 4 }
 
       it 'returns incremented value' do
-        expect(subject.incr(key)).to eq(value + 1)
-        expect(subject.get(key).to_i).to eq(value + 1)
+        expect(redis.incr(key)).to eq(value + 1)
+        expect(redis.get(key).to_i).to eq(value + 1)
       end
     end
 
@@ -169,7 +169,7 @@ describe RedisExamples::RedisAdapter do
       let(:value) { "tere" }
 
       it 'returns raises error' do
-        expect{subject.incr(key)}.to raise_error(Redis::CommandError)
+        expect{redis.incr(key)}.to raise_error(Redis::CommandError)
       end
     end
   end
@@ -178,16 +178,16 @@ describe RedisExamples::RedisAdapter do
     let(:key1) { "a" }
     let(:key2) { "b" }
 
-    after { subject.del([key1, key2]) }
+    after { redis.del([key1, key2]) }
 
     it 'executes commands in transaction' do
-      subject.multi do
-        subject.set(key1, value)
-        subject.incr(key1)
-        subject.set(key2, value)
+      redis.multi do
+        redis.set(key1, value)
+        redis.incr(key1)
+        redis.set(key2, value)
       end
-      expect(subject.get(key1).to_i).to eq(value + 1)
-      expect(subject.get(key2).to_i).to eq value
+      expect(redis.get(key1).to_i).to eq(value + 1)
+      expect(redis.get(key2).to_i).to eq value
     end
 
     context 'if error in between in transaction' do
@@ -195,27 +195,27 @@ describe RedisExamples::RedisAdapter do
 
       it 'executes commands that dont throw' do
         expect do
-          subject.multi do
-            subject.set(key1, value)
-            subject.incr(key1)
-            subject.set(key2, value)
+          redis.multi do
+            redis.set(key1, value)
+            redis.incr(key1)
+            redis.set(key2, value)
           end
         end.to raise_error(Redis::CommandError)
-        expect(subject.get(key1)).to eq value
-        expect(subject.get(key2)).to eq value
+        expect(redis.get(key1)).to eq value
+        expect(redis.get(key2)).to eq value
       end
 
       it 'sets future values' do
         future = nil
-        subject.multi do
-          future = subject.set(key1, value)
+        redis.multi do
+          future = redis.set(key1, value)
         end
         expect(future.value).to eq "OK"
       end
     end
 
     context 'when in transaction and using 2 threads' do
-      let(:transactional_redis) { described_class.new(database_number) }
+      let(:transactional_redis) { Redis.new(db: database_number) }
 
       it 'executes transactional commands after non-transactional commands' do
         transactional_value1 = nil
@@ -232,15 +232,15 @@ describe RedisExamples::RedisAdapter do
         }
         Thread.new {
           sleep 0.1
-          subject.incr(key1)
-          non_transactional_value = subject.get(key1)
+          redis.incr(key1)
+          non_transactional_value = redis.get(key1)
         }
         sleep 0.4
 
         expect(transactional_value1.value.to_i).to eq(value + 2)
         expect(transactional_value2.value.to_i).to eq(value + 2)
         expect(non_transactional_value.to_i).to eq(value + 1)
-        expect(subject.get(key1).to_i).to eq(value + 2)
+        expect(redis.get(key1).to_i).to eq(value + 2)
       end
     end
   end

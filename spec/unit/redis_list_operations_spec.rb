@@ -1,5 +1,4 @@
 require 'spec_helper'
-require 'redis'
 
 describe 'redis lists' do
   let(:redis) { Redis.new }
@@ -75,6 +74,19 @@ describe 'redis lists' do
     end
   end
 
+  describe '#rpoplpush' do
+    let(:values) { ["1", "2", "3"] }
+    let(:key2) { 'my_backup_list' }
+    before { redis.lpush(key, values) }
+    after(:each) { redis.del(key2) }
+
+    it 'returns correct elements depending on input' do
+      redis.rpoplpush(key, key2)
+      expect(redis.lrange(key, 0, -1)).to eq(["3", "2"])
+      expect(redis.lrange(key2, 0, -1)).to eq(["1"])
+    end
+  end
+
   describe 'blocking operations' do
     let(:values) { "1" }
     let(:blocked_redis) { Redis.new }
@@ -95,6 +107,7 @@ describe 'redis lists' do
 
     context 'with multiple lists' do
       let(:key2) { "my_list2" }
+      after(:each) { redis.del(key2) }
 
       it 'returns correct elements depending on input' do
         Thread.new {
