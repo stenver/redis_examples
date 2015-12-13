@@ -2,8 +2,13 @@ require 'rubygems'
 require 'bundler'
 require 'pry'
 Bundler.setup
+require 'ostruct'
+require 'json'
 
 require 'redis_examples'
+
+# Require support classes
+Dir[File.dirname(__FILE__) + '/support/*.rb'].each {|f| require f}
 
 RSpec.configure do |config|
   config.mock_with :rspec
