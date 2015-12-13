@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe 'redis basic key/value operations' do
+describe 'redis basic binary string operations' do
   let(:redis) { Redis.new(db: database_number) }
 
   let(:database_number) { 10 }
