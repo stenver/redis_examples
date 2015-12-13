@@ -129,6 +129,8 @@ describe RedisExamples::RedisAdapter do
       subject.set(key3, "value")
     end
 
+    after { subject.del([key1, key2, key3]) }
+
     context 'when deleting single key' do
       it 'deletes single pair' do
         subject.del(key1)
@@ -144,6 +146,96 @@ describe RedisExamples::RedisAdapter do
         expect(subject.get(key1)).to eq nil
         expect(subject.get(key2)).to eq nil
         expect(subject.get(key3)).to eq nil
+      end
+    end
+  end
+
+  describe '#incr' do
+    let(:key) { "some_key" }
+
+    before { subject.set(key, value) }
+    after { subject.del(key) }
+
+    context 'when incrementing number' do
+      let(:value) { 4 }
+
+      it 'returns incremented value' do
+        expect(subject.incr(key)).to eq(value + 1)
+        expect(subject.get(key).to_i).to eq(value + 1)
+      end
+    end
+
+    context 'when incrementing string' do
+      let(:value) { "tere" }
+
+      it 'returns raises error' do
+        expect{subject.incr(key)}.to raise_error(Redis::CommandError)
+      end
+    end
+  end
+
+  describe '#multi' do
+    let(:key1) { "a" }
+    let(:key2) { "b" }
+
+    after { subject.del([key1, key2]) }
+
+    it 'executes commands in transaction' do
+      subject.multi do
+        subject.set(key1, value)
+        subject.incr(key1)
+        subject.set(key2, value)
+      end
+      expect(subject.get(key1).to_i).to eq(value + 1)
+      expect(subject.get(key2).to_i).to eq value
+    end
+
+    context 'if error in between in transaction' do
+      let(:value) { "c" }
+
+      it 'executes commands that dont throw' do
+        expect do
+          subject.multi do
+            subject.set(key1, value)
+            subject.incr(key1)
+            subject.set(key2, value)
+          end
+        end.to raise_error(Redis::CommandError)
+        expect(subject.get(key1)).to eq value
+        expect(subject.get(key2)).to eq value
+      end
+
+      it 'sets future values' do
+        future = nil
+        subject.multi do
+          future = subject.set(key1, value)
+        end
+        expect(future.value).to eq "OK"
+      end
+    end
+
+    context 'when in transaction and using 2 threads' do
+      it 'it blocks the other thread until transaction is over' do
+        future1 = nil
+        future2 = nil
+        Thread.new {
+          subject.multi do
+            subject.set(key1, value)
+            sleep 0.2
+            subject.incr(key1)
+            future1 = subject.get(key1)
+          end
+        }
+        Thread.new {
+          sleep 0.1
+          subject.incr(key1)
+          future2 = subject.get(key1)
+        }
+        sleep 0.4
+
+        expect(future1.value.to_i).to eq(value + 1)
+        expect(future2.to_i).to eq(value + 2)
+        expect(subject.get(key1).to_i).to eq(value + 2)
       end
     end
   end
